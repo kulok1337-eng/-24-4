@@ -1,7 +1,7 @@
 import os
 
-# Токен бота
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8991440368:AAEe5iSnY94xAfK71RsZs3zZQ6WcKc2q2j8")
+# Токен бота берётся из переменной окружения BOT_TOKEN (задаётся на хостинге)
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 # ID администраторов: Артём (диспетчер) и владелец
 ARTEM_ID = 5742960391
