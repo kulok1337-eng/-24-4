@@ -68,7 +68,7 @@ async def start_closing_order(callback: CallbackQuery, state: FSMContext):
     order_id = int(callback.data.split("_")[2])
     await state.update_data(closing_order_id=order_id)
     await state.set_state(CloseDealStates.waiting_for_amount)
-    await callback.message.answer(f"Введите итоговую сумму сделки для заказа #{order_id} (только число):")
+    await callback.message.answer(f"Введите стоимость работы без материалов для заказа #{order_id} (только число):")
 
 
 @router.message(CloseDealStates.waiting_for_amount)
@@ -84,12 +84,13 @@ async def process_closing_amount(message: Message, state: FSMContext):
 
     data = await state.get_data()
     order_id = data["closing_order_id"]
-    commission = deal_amount * (config.DEFAULT_COMMISSION_PERCENT / 100.0)
+    percent = config.get_partner_percent(deal_amount)
+    commission = round(deal_amount * percent / 100.0, 2)
 
     await close_order(order_id, deal_amount, commission)
     await state.clear()
 
-    await message.answer(f"Заказ #{order_id} закрыт.\nЧек: {deal_amount} руб.\nКомиссия мастера: {commission} руб.")
+    await message.answer(f"Заказ #{order_id} закрыт.\nСтоимость работы: {deal_amount} руб.\nПартнёру ({percent:g}%): {commission} руб.\nВам ({100 - percent:g}%): {round(deal_amount - commission, 2)} руб.")
 
     order = await get_order(order_id)
     if order:
@@ -97,7 +98,7 @@ async def process_closing_amount(message: Message, state: FSMContext):
             chat_id=order.master_id,
             text=(
                 f"Заказ #{order_id} успешно закрыт!\n\n"
-                f"Итоговый чек: {deal_amount} руб.\n"
-                f"Ваша выплата ({config.DEFAULT_COMMISSION_PERCENT}%): {commission} руб."
+                f"Стоимость работы: {deal_amount} руб.\n"
+                f"Ваша выплата ({percent:g}%): {commission} руб."
             ),
         )
