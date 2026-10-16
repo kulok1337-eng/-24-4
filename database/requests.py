@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from database.models import Order, User, async_session
 
 
@@ -80,3 +80,44 @@ async def close_order(order_id: int, deal_amount: float, commission_amount: floa
             .values(status="completed", deal_amount=deal_amount, commission_amount=commission_amount)
         )
         await session.commit()
+
+
+async def list_orders(status: str | None = None, limit: int = 15) -> list[Order]:
+    async with async_session() as session:
+        query = select(Order).order_by(Order.id.desc()).limit(limit)
+        if status:
+            query = query.where(Order.status == status)
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+
+async def list_masters(approved: bool | None = None) -> list[User]:
+    async with async_session() as session:
+        query = select(User).where(User.role == "master").order_by(User.id.desc())
+        if approved is not None:
+            query = query.where(User.is_approved == approved)
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+
+async def delete_user(telegram_id: int):
+    async with async_session() as session:
+        await session.execute(delete(User).where(User.telegram_id == telegram_id))
+        await session.commit()
+
+
+async def get_stats() -> dict:
+    async with async_session() as session:
+        orders = (await session.execute(select(Order))).scalars().all()
+        masters = (await session.execute(select(User).where(User.role == "master"))).scalars().all()
+    by_status: dict[str, int] = {}
+    for o in orders:
+        by_status[o.status] = by_status.get(o.status, 0) + 1
+    return {
+        "orders_total": len(orders),
+        "by_status": by_status,
+        "deal_sum": sum(o.deal_amount for o in orders if o.status == "completed"),
+        "commission_sum": sum(o.commission_amount for o in orders if o.status == "completed"),
+        "masters_total": len(masters),
+        "masters_pending": sum(1 for m in masters if not m.is_approved),
+    }
