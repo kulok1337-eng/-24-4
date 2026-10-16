@@ -1,11 +1,18 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, KeyboardButton, Message, ReplyKeyboardMarkup
 import config
-from database.requests import approve_user, close_order, get_order, update_order_status
+from database.requests import approve_user, close_order, delete_user, get_order, update_order_status
 
 router = Router()
+
+
+def master_menu() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="Передать заказ")], [KeyboardButton(text="Мой профиль")]],
+        resize_keyboard=True,
+    )
 
 
 class CloseDealStates(StatesGroup):
@@ -20,7 +27,7 @@ async def handle_approve_master(callback: CallbackQuery):
     user_id = int(callback.data.split("_")[2])
     await approve_user(user_id)
     await callback.message.edit_text(f"{callback.message.text}\n\n[Мастер успешно одобрен]")
-    await callback.bot.send_message(chat_id=user_id, text="Ваша анкета одобрена! Теперь вы можете передавать заказы через меню бота.")
+    await callback.bot.send_message(chat_id=user_id, text="Ваша анкета одобрена! Теперь вы можете передавать заказы через меню бота.", reply_markup=master_menu())
 
 
 @router.callback_query(F.data.startswith("adm_decl_"))
@@ -29,6 +36,7 @@ async def handle_decline_master(callback: CallbackQuery):
         return
 
     user_id = int(callback.data.split("_")[2])
+    await delete_user(user_id)
     await callback.message.edit_text(f"{callback.message.text}\n\n[Регистрация отклонена]")
     await callback.bot.send_message(chat_id=user_id, text="К сожалению, доступ к сервису не был подтверждён.")
 
