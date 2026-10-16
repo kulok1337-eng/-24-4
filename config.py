@@ -9,5 +9,11 @@ OWNER_ID = 1979046241
 
 ADMIN_IDS = [ARTEM_ID, OWNER_ID]
 
-# Процент комиссии мастерам по умолчанию
-DEFAULT_COMMISSION_PERCENT = float(os.getenv("DEFAULT_COMMISSION_PERCENT", "10.0"))
+
+def get_partner_percent(work_cost: float) -> float:
+    """Доля партнёра (мастера, передавшего заказ) от стоимости работы без материалов."""
+    if work_cost < 4000:
+        return 25.0
+    if work_cost <= 7000:
+        return 20.0
+    return 15.0
