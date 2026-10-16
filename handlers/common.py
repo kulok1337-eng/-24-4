@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 import config
 from database.requests import create_user, get_user
+from handlers.admin_panel import admin_menu
 
 router = Router()
 
@@ -30,7 +31,7 @@ async def cmd_start(message: Message, state: FSMContext):
                 role="admin",
                 is_approved=True,
             )
-        await message.answer("Добро пожаловать в панель управления администратора!")
+        await message.answer("Добро пожаловать в панель управления администратора!", reply_markup=admin_menu())
         return
 
     if user:
