@@ -86,7 +86,7 @@ async def list_orders(status: str | None = None, limit: int = 15) -> list[Order]
     async with async_session() as session:
         query = select(Order).order_by(Order.id.desc()).limit(limit)
         if status:
-            query = query.where(Order.status == status)
+            query = query.where(Order.status.in_(["in_progress", "in"]) if status == "in_progress" else Order.status == status)
         result = await session.execute(query)
         return list(result.scalars().all())
 
@@ -112,7 +112,8 @@ async def get_stats() -> dict:
         masters = (await session.execute(select(User).where(User.role == "master"))).scalars().all()
     by_status: dict[str, int] = {}
     for o in orders:
-        by_status[o.status] = by_status.get(o.status, 0) + 1
+        key = "in_progress" if o.status == "in" else o.status
+        by_status[key] = by_status.get(key, 0) + 1
     return {
         "orders_total": len(orders),
         "by_status": by_status,
