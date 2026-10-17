@@ -17,6 +17,7 @@ router.callback_query.filter(F.from_user.id.in_(config.ADMIN_IDS))
 
 STATUS_RU = {
     "new": "Новая",
+    "in": "В работе",
     "in_progress": "В работе",
     "completed": "Завершена",
     "canceled": "Отклонена",
