@@ -46,7 +46,7 @@ async def handle_status_change(callback: CallbackQuery):
     if callback.from_user.id not in config.ADMIN_IDS:
         return
 
-    parts = callback.data.split("_")
+    parts = callback.data.split("_", 3)
     order_id = int(parts[2])
     new_status = parts[3]
 
