@@ -1,5 +1,7 @@
 from sqlalchemy import delete, select, update
-from database.models import Order, User, async_session
+import json
+from datetime import datetime, timedelta
+from database.models import Order, OrderReport, User, async_session
 
 
 async def get_user(telegram_id: int) -> User | None:
@@ -122,3 +124,35 @@ async def get_stats() -> dict:
         "masters_total": len(masters),
         "masters_pending": sum(1 for m in masters if not m.is_approved),
     }
+
+
+async def add_report(order_id: int, kind: str, answers: dict):
+    async with async_session() as session:
+        session.add(OrderReport(order_id=order_id, kind=kind, data=json.dumps(answers, ensure_ascii=False)))
+        await session.commit()
+
+
+async def get_reports(order_id: int) -> list[OrderReport]:
+    async with async_session() as session:
+        result = await session.execute(
+            select(OrderReport).where(OrderReport.order_id == order_id).order_by(OrderReport.id)
+        )
+        return list(result.scalars().all())
+
+
+async def list_sd_due(days: int = 5) -> list[OrderReport]:
+    """СД-отчёты старше N дней, по которым ещё не было напоминания, а заявка всё ещё в СД."""
+    border = datetime.utcnow() - timedelta(days=days)
+    async with async_session() as session:
+        result = await session.execute(
+            select(OrderReport)
+            .join(Order, Order.id == OrderReport.order_id)
+            .where(OrderReport.kind == "sd", OrderReport.reminded == False, OrderReport.created_at <= border, Order.status == "sd")  # noqa: E712
+        )
+        return list(result.scalars().all())
+
+
+async def mark_reminded(report_id: int):
+    async with async_session() as session:
+        await session.execute(update(OrderReport).where(OrderReport.id == report_id).values(reminded=True))
+        await session.commit()
