@@ -18,6 +18,7 @@ router.callback_query.filter(F.from_user.id.in_(config.ADMIN_IDS))
 STATUS_RU = {
     "new": "Новая",
     "in": "В работе",
+    "sd": "СД",
     "in_progress": "В работе",
     "completed": "Завершена",
     "canceled": "Отклонена",
@@ -28,7 +29,8 @@ def admin_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Новые заявки"), KeyboardButton(text="В работе")],
-            [KeyboardButton(text="Все заявки"), KeyboardButton(text="Статистика")],
+            [KeyboardButton(text="СД"), KeyboardButton(text="Все заявки")],
+            [KeyboardButton(text="Статистика")],
             [KeyboardButton(text="Мастера"), KeyboardButton(text="На модерации")],
         ],
         resize_keyboard=True,
@@ -52,15 +54,14 @@ def order_text(o) -> str:
 def order_kb(o) -> InlineKeyboardMarkup | None:
     if o.status in ("completed", "canceled"):
         return None
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="В работу", callback_data=f"ord_stat_{o.id}_in_progress"),
-                InlineKeyboardButton(text="Завершить", callback_data=f"ord_close_{o.id}"),
-            ],
-            [InlineKeyboardButton(text="Отказ", callback_data=f"ord_stat_{o.id}_canceled")],
-        ]
-    )
+    rows = []
+    if o.status == "new":
+        rows.append([InlineKeyboardButton(text="В работу", callback_data=f"ord_stat_{o.id}_in_progress")])
+    rows.append([InlineKeyboardButton(text="Закрыть заявку", callback_data=f"rep_close_{o.id}")])
+    if o.status != "sd":
+        rows.append([InlineKeyboardButton(text="Перевести в СД", callback_data=f"rep_sd_{o.id}")])
+    rows.append([InlineKeyboardButton(text="Отказ клиента", callback_data=f"rep_refuse_{o.id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @router.message(Command("admin"))
@@ -88,6 +89,11 @@ async def in_progress_orders(message: Message):
     await send_orders(message, "in_progress", "Заявки в работе")
 
 
+@router.message(F.text == "СД")
+async def sd_orders(message: Message):
+    await send_orders(message, "sd", "Заявки в СД")
+
+
 @router.message(F.text == "Все заявки")
 async def all_orders(message: Message):
     await send_orders(message, None, "Все заявки")
@@ -102,6 +108,7 @@ async def stats(message: Message):
         f"Заявок всего: {s['orders_total']}\n"
         f"Новые: {by.get('new', 0)}\n"
         f"В работе: {by.get('in_progress', 0)}\n"
+        f"СД: {by.get('sd', 0)}\n"
         f"Завершено: {by.get('completed', 0)}\n"
         f"Отклонено: {by.get('canceled', 0)}\n\n"
         f"Сумма сделок: {s['deal_sum']} руб.\n"
